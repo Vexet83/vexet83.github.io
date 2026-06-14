@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Random Tools</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --primary: #0f172a;
+      --danger: #dc2626;
+      --good: #16a34a;
+      --soft: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1400px; margin: 0 auto; padding: 28px; }
+    .header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 20px; }
+    .eyebrow { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; }
+    h1 { font-size: clamp(32px, 4vw, 56px); line-height: 1; margin: 8px 0; }
+    .subtitle { color: var(--muted); max-width: 760px; margin: 0; line-height: 1.45; }
+    .nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 24px; }
+    .nav button {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+      border-radius: 999px; padding: 12px 18px;
+    }
+    .nav button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tool-page { display: none; }
+    .tool-page.active { display: block; }
+    .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; }
+    .dice-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 24px; }
+    .card { background: var(--card); border-radius: 28px; box-shadow: 0 18px 45px rgba(15,23,42,.12); padding: 24px; }
+    .wheel-manager { margin-bottom: 24px; }
+    .manager-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+    .manager-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .wheel-top { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 16px; padding: 13px 14px;
+      font-size: 16px; color: var(--text); background: #fff; outline: none;
+    }
+    select { font-weight: 800; }
+    textarea { min-height: 280px; resize: vertical; font-family: Consolas, Monaco, monospace; font-size: 14px; line-height: 1.35; }
+    #titleInput { font-size: 22px; font-weight: 800; }
+    button {
+      border: 0; border-radius: 16px; padding: 12px 16px; background: var(--primary);
+      color: white; font-weight: 800; cursor: pointer; white-space: nowrap;
+      transition: transform .08s ease, opacity .15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .danger { background: var(--danger); }
+    .success { background: var(--good); }
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .wheel-wrap { position: relative; max-width: 580px; margin: 0 auto; aspect-ratio: 1 / 1; }
+    canvas { width: 100%; height: 100%; display: block; filter: drop-shadow(0 20px 22px rgba(15,23,42,.22)); }
+    .pointer {
+      position: absolute; right: -2px; top: 50%; transform: translateY(-50%);
+      width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent;
+      border-right: 40px solid #0f172a; filter: drop-shadow(0 3px 3px rgba(0,0,0,.3)); z-index: 2;
+    }
+    .winner {
+      display: none; max-width: 620px; margin: 24px auto 0; text-align: center; background: #fff;
+      border-radius: 24px; box-shadow: 0 12px 26px rgba(15,23,42,.12); padding: 20px;
+    }
+    .winner-label { color: var(--muted); text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 900; }
+    .winner-name { margin-top: 8px; font-size: clamp(26px,4vw,42px); font-weight: 900; word-break: break-word; }
+    .side-title { margin: 0 0 16px; font-size: 22px; }
+    .add-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .options { background: #f1f5f9; border-radius: 18px; padding: 14px; margin-top: 14px; display: grid; gap: 12px; }
+    .toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; font-weight: 700; font-size: 14px; }
+    .toggle input { width: 20px; height: 20px; }
+    .count { color: var(--muted); font-size: 14px; margin-top: 12px; }
+    .history { max-height: 300px; overflow: auto; display: grid; gap: 10px; }
+    .history-item { background: #f1f5f9; border-radius: 16px; padding: 12px; }
+    .history-item strong { display: block; word-break: break-word; }
+    .history-item span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); margin: 0; }
+    .stack { display: grid; gap: 24px; }
+    .hint { color: var(--muted); font-size: 13px; margin: 10px 0 0; line-height: 1.4; }
+
+    .dice-controls { display: grid; gap: 16px; }
+    .dice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .label { display: grid; gap: 7px; font-size: 13px; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .quick-dice { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .dice-result-card { min-height: 430px; display: grid; align-content: center; justify-items: center; text-align: center; }
+    .dice-expression { color: var(--muted); font-weight: 900; text-transform: uppercase; letter-spacing: .16em; font-size: 13px; }
+    .dice-total { font-size: clamp(72px, 14vw, 160px); font-weight: 1000; line-height: .9; margin: 16px 0; }
+    .dice-breakdown { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 760px; }
+    .die-pill { background: var(--soft); border-radius: 999px; padding: 9px 12px; font-weight: 900; }
+    .die-pill.dropped { opacity: .45; text-decoration: line-through; }
+    .formula-box { font-family: Consolas, Monaco, monospace; text-transform: none; letter-spacing: 0; font-weight: 700; }
+    .small-muted { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .dice-history-card { margin-top: 24px; }
+    .discount-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 24px; }
+    .discount-controls { display: grid; gap: 16px; }
+    .discount-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .discount-result-card { min-height: 430px; display: grid; align-content: center; gap: 14px; }
+    .price-main { text-align: center; }
+    .price-label { color: var(--muted); font-weight: 900; text-transform: uppercase; letter-spacing: .16em; font-size: 13px; }
+    .price-total { font-size: clamp(54px, 9vw, 112px); font-weight: 1000; line-height: 1; margin-top: 10px; }
+    .summary-grid { display: grid; gap: 10px; margin-top: 8px; }
+    .summary-line { display: flex; justify-content: space-between; gap: 16px; background: #f1f5f9; border-radius: 16px; padding: 12px 14px; font-weight: 800; }
+    .summary-line span:first-child { color: var(--muted); }
+    .summary-line.good span:last-child { color: var(--good); }
+    .discount-history-card { margin-top: 24px; }
+    .priceper-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 24px; }
+    .priceper-controls { display: grid; gap: 16px; }
+    .priceper-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .priceper-result-card { min-height: 430px; display: grid; align-content: center; gap: 14px; }
+    .compare-table-wrap { overflow-x: auto; }
+    .compare-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
+    .compare-table th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 0 10px; }
+    .compare-table td { background: #f1f5f9; padding: 12px 10px; font-weight: 800; }
+    .compare-table td:first-child { border-radius: 14px 0 0 14px; }
+    .compare-table td:last-child { border-radius: 0 14px 14px 0; }
+    .compare-table tr.best td { background: #dcfce7; }
+    .priceper-history-card { margin-top: 24px; }
+    @media (max-width: 950px) {
+      .header, .wheel-top, .manager-row { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
+      .manager-actions { justify-content: stretch; }
+      .manager-actions button { flex: 1; }
+      .grid, .dice-grid, .discount-grid, .priceper-grid { grid-template-columns: 1fr; }
+      .quick-dice { grid-template-columns: repeat(2, 1fr); }
+      .discount-row, .priceper-row { grid-template-columns: 1fr; }
+      .page { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="eyebrow">No-login local tools</div>
+        <h1>Local Random Tools</h1>
+        <p class="subtitle">A standalone browser app for picker wheels, dice rolling, discount math, price comparisons, and future tools. Everything saves locally in your browser.</p>
+      </div>
+      <div class="button-row wheel-export-actions">
+        <button class="secondary" id="exportCurrentBtn">Export Current Wheel</button>
+        <button class="secondary" id="exportAllBtn">Export All Wheels</button>
+        <button class="secondary" id="importBtn">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+      </div>
+    </header>
+
+    <nav class="nav" aria-label="Tool navigation">
+      <button id="navWheel" class="active" data-page="wheelPage">Picker Wheel</button>
+      <button id="navDice" data-page="dicePage">Dice Roller</button>
+      <button id="navDiscount" data-page="discountPage">Discount Calculator</button>
+      <button id="navPricePer" data-page="pricePerPage">Price Per</button>
+    </nav>
+
+    <section id="wheelPage" class="tool-page active">
+      <section class="card wheel-manager">
+        <div class="manager-row">
+          <select id="wheelSelect" aria-label="Choose wheel"></select>
+          <div class="manager-actions">
+            <button class="success" id="newWheelBtn">New Wheel</button>
+            <button class="secondary" id="duplicateWheelBtn">Duplicate</button>
+            <button class="secondary" id="renameWheelBtn">Rename</button>
+            <button class="danger" id="deleteWheelBtn">Delete</button>
+          </div>
+        </div>
+        <p class="hint">Each wheel has its own title, entries, options, and winner history. Changes save automatically in this browser.</p>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <div class="wheel-top">
+            <input id="titleInput" type="text" value="What should we pick?" aria-label="Wheel title" />
+            <button id="spinBtn">Spin Wheel</button>
+          </div>
+          <div class="wheel-wrap">
+            <div class="pointer"></div>
+            <canvas id="wheelCanvas" width="900" height="900"></canvas>
+          </div>
+          <div class="winner" id="winnerBox">
+            <div class="winner-label">Winner</div>
+            <div class="winner-name" id="winnerName"></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <h2 class="side-title">Entries</h2>
+            <div class="add-row">
+              <input id="newItemInput" type="text" placeholder="Add one option..." />
+              <button id="addBtn">Add</button>
+            </div>
+            <textarea id="itemsInput" placeholder="Put one option per line"></textarea>
+            <div class="button-row">
+              <button class="secondary" id="shuffleBtn">Shuffle</button>
+              <button class="secondary" id="sortBtn">Sort A-Z</button>
+              <button class="secondary" id="resetBtn">Reset Entries</button>
+              <button class="danger" id="clearBtn">Clear Entries</button>
+            </div>
+            <div class="options">
+              <label class="toggle">Avoid same winner twice in a row <input type="checkbox" id="avoidRepeatInput" checked /></label>
+              <label class="toggle">Remove winner after spin <input type="checkbox" id="removeWinnerInput" /></label>
+            </div>
+            <div class="count" id="countText">0 options on the wheel.</div>
+          </div>
+
+          <div class="card">
+            <h2 class="side-title">Winner History</h2>
+            <div class="button-row" style="margin-top: -4px; margin-bottom: 14px;">
+              <button class="secondary" id="clearHistoryBtn">Clear History</button>
+            </div>
+            <div class="history" id="historyList"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="dicePage" class="tool-page">
+      <section class="dice-grid">
+        <div class="card">
+          <h2 class="side-title">Dice Roller</h2>
+          <div class="dice-controls">
+            <label class="label">Dice notation
+              <input id="diceNotationInput" type="text" value="1d20" placeholder="Examples: 1d20, 2d6+3, 4d6kh3" />
+            </label>
+
+            <div class="dice-row">
+              <label class="label">Number of dice
+                <input id="diceCountInput" type="number" min="1" max="100" value="1" />
+              </label>
+              <label class="label">Sides
+                <input id="diceSidesInput" type="number" min="2" max="1000" value="20" />
+              </label>
+            </div>
+
+            <div class="dice-row">
+              <label class="label">Modifier
+                <input id="diceModifierInput" type="number" value="0" />
+              </label>
+              <label class="label">Roll mode
+                <select id="diceModeInput">
+                  <option value="normal">Normal</option>
+                  <option value="advantage">Advantage - roll 2, keep highest</option>
+                  <option value="disadvantage">Disadvantage - roll 2, keep lowest</option>
+                  <option value="kh3">4d6 keep highest 3</option>
+                </select>
+              </label>
+            </div>
+
+            <button id="rollDiceBtn">Roll Dice</button>
+
+            <div class="quick-dice">
+              <button class="secondary quickDie" data-notation="1d4">d4</button>
+              <button class="secondary quickDie" data-notation="1d6">d6</button>
+              <button class="secondary quickDie" data-notation="1d8">d8</button>
+              <button class="secondary quickDie" data-notation="1d10">d10</button>
+              <button class="secondary quickDie" data-notation="1d12">d12</button>
+              <button class="secondary quickDie" data-notation="1d20">d20</button>
+              <button class="secondary quickDie" data-notation="1d100">d100</button>
+              <button class="secondary quickDie" data-notation="4d6kh3">Stats</button>
+            </div>
+
+            <p class="small-muted">
+              Supported notation: <strong>XdY</strong>, optional modifier like <strong>2d6+3</strong>, and keep highest like <strong>4d6kh3</strong>.
+              Advantage/disadvantage is mainly for d20 rolls.
+            </p>
+          </div>
+        </div>
+
+        <div class="card dice-result-card">
+          <div class="dice-expression" id="diceExpression">Ready to roll</div>
+          <div class="dice-total" id="diceTotal">—</div>
+          <div class="dice-breakdown" id="diceBreakdown"></div>
+        </div>
+      </section>
+
+      <section class="card dice-history-card">
+        <h2 class="side-title">Roll History</h2>
+        <div class="button-row" style="margin-top: -4px; margin-bottom: 14px;">
+          <button class="secondary" id="clearDiceHistoryBtn">Clear Dice History</button>
+        </div>
+        <div class="history" id="diceHistoryList"></div>
+      </section>
+    </section>
+    <section id="discountPage" class="tool-page">
+      <section class="discount-grid">
+        <div class="card">
+          <h2 class="side-title">Discount Calculator</h2>
+          <div class="discount-controls">
+            <div class="discount-row">
+              <label class="label">Original price
+                <input id="discountPriceInput" type="number" min="0" step="0.01" value="100.00" />
+              </label>
+              <label class="label">Quantity
+                <input id="discountQuantityInput" type="number" min="1" step="1" value="1" />
+              </label>
+            </div>
+
+            <div class="discount-row">
+              <label class="label">Percent off
+                <input id="discountPercentInput" type="number" min="0" max="100" step="0.01" value="20" />
+              </label>
+              <label class="label">Dollar off
+                <input id="discountDollarInput" type="number" min="0" step="0.01" value="0" />
+              </label>
+            </div>
+
+            <div class="discount-row">
+              <label class="label">Additional percent off
+                <input id="discountExtraPercentInput" type="number" min="0" max="100" step="0.01" value="0" />
+              </label>
+              <label class="label">Sales tax %
+                <input id="discountTaxInput" type="number" min="0" step="0.01" value="0" />
+              </label>
+            </div>
+
+            <label class="label">Calculation mode
+              <select id="discountModeInput">
+                <option value="percentThenDollar">Percent off, then dollar off</option>
+                <option value="dollarThenPercent">Dollar off, then percent off</option>
+                <option value="percentOnly">Percent off only</option>
+                <option value="dollarOnly">Dollar off only</option>
+              </select>
+            </label>
+
+            <button id="calculateDiscountBtn">Calculate Discount</button>
+
+            <div class="button-row">
+              <button class="secondary discountPreset" data-percent="10">10% Off</button>
+              <button class="secondary discountPreset" data-percent="15">15% Off</button>
+              <button class="secondary discountPreset" data-percent="20">20% Off</button>
+              <button class="secondary discountPreset" data-percent="25">25% Off</button>
+              <button class="secondary discountPreset" data-percent="50">50% Off</button>
+              <button class="secondary" id="resetDiscountBtn">Reset</button>
+            </div>
+
+            <p class="small-muted">
+              The “additional percent off” is applied as a stacked discount after the first discount step, not added together.
+              Example: 20% off plus 10% extra is 28% total savings, not 30%.
+            </p>
+          </div>
+        </div>
+
+        <div class="card discount-result-card">
+          <div class="price-main">
+            <div class="price-label">Final total</div>
+            <div class="price-total" id="discountFinalTotal">$80.00</div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-line"><span>Original subtotal</span><span id="discountOriginalSubtotal">$100.00</span></div>
+            <div class="summary-line good"><span>Total savings</span><span id="discountSavings">$20.00</span></div>
+            <div class="summary-line"><span>Discounted subtotal</span><span id="discountSubtotal">$80.00</span></div>
+            <div class="summary-line"><span>Tax</span><span id="discountTaxAmount">$0.00</span></div>
+            <div class="summary-line"><span>Final price each</span><span id="discountEach">$80.00</span></div>
+            <div class="summary-line good"><span>Effective discount</span><span id="discountEffectivePercent">20.00%</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card discount-history-card">
+        <h2 class="side-title">Discount History</h2>
+        <div class="button-row" style="margin-top: -4px; margin-bottom: 14px;">
+          <button class="secondary" id="clearDiscountHistoryBtn">Clear Discount History</button>
+        </div>
+        <div class="history" id="discountHistoryList"></div>
+      </section>
+    </section>
+
+    <section id="pricePerPage" class="tool-page">
+      <section class="priceper-grid">
+        <div class="card">
+          <h2 class="side-title">Price Per Calculator</h2>
+          <div class="priceper-controls">
+            <label class="label">Item name
+              <input id="pricePerNameInput" type="text" value="Item A" placeholder="Example: Coffee, detergent, chicken, etc." />
+            </label>
+
+            <div class="priceper-row">
+              <label class="label">Price
+                <input id="pricePerPriceInput" type="number" min="0" step="0.01" value="9.99" />
+              </label>
+              <label class="label">Quantity / size
+                <input id="pricePerQuantityInput" type="number" min="0" step="0.001" value="16" />
+              </label>
+            </div>
+
+            <div class="priceper-row">
+              <label class="label">Unit
+                <select id="pricePerUnitInput">
+                  <option value="oz">oz</option>
+                  <option value="lb">lb</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="fl oz">fl oz</option>
+                  <option value="ml">ml</option>
+                  <option value="L">L</option>
+                  <option value="gal">gal</option>
+                  <option value="item">item</option>
+                  <option value="ct">ct</option>
+                  <option value="serving">serving</option>
+                  <option value="sq ft">sq ft</option>
+                  <option value="ft">ft</option>
+                </select>
+              </label>
+              <label class="label">Compare as
+                <select id="pricePerCompareUnitInput">
+                  <option value="same">Same unit</option>
+                  <option value="oz">per oz</option>
+                  <option value="lb">per lb</option>
+                  <option value="g">per g</option>
+                  <option value="kg">per kg</option>
+                  <option value="fl oz">per fl oz</option>
+                  <option value="ml">per ml</option>
+                  <option value="L">per L</option>
+                  <option value="gal">per gal</option>
+                  <option value="item">per item</option>
+                  <option value="ct">per count</option>
+                  <option value="serving">per serving</option>
+                  <option value="sq ft">per sq ft</option>
+                  <option value="ft">per ft</option>
+                </select>
+              </label>
+            </div>
+
+            <button id="addPricePerBtn">Add / Update Comparison</button>
+
+            <div class="button-row">
+              <button class="secondary" id="calculatePricePerBtn">Calculate Only</button>
+              <button class="secondary" id="newPricePerItemBtn">New Item</button>
+              <button class="danger" id="clearPricePerBtn">Clear Comparisons</button>
+            </div>
+
+            <p class="small-muted">
+              Use “Compare as” to normalize different package sizes. For example, compare 16 oz vs 2 lb as price per oz or price per lb.
+              Units only convert within the same type, like weight to weight or volume to volume.
+            </p>
+          </div>
+        </div>
+
+        <div class="card priceper-result-card">
+          <div class="price-main">
+            <div class="price-label">Current price per</div>
+            <div class="price-total" id="pricePerCurrent">$0.62/oz</div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-line"><span>Item</span><span id="pricePerCurrentName">Item A</span></div>
+            <div class="summary-line"><span>Package price</span><span id="pricePerCurrentPrice">$9.99</span></div>
+            <div class="summary-line"><span>Package size</span><span id="pricePerCurrentSize">16 oz</span></div>
+            <div class="summary-line good"><span>Best comparison</span><span id="pricePerBest">—</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card priceper-history-card">
+        <h2 class="side-title">Comparison List</h2>
+        <div class="compare-table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Price</th>
+                <th>Size</th>
+                <th>Price Per</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pricePerTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+  </main>
+
+  <script>
+    const STORAGE_KEY = "standalone-local-multi-picker-wheel-v2";
+    const OLD_STORAGE_KEY = "standalone-local-picker-wheel-v1";
+    const APP_SETTINGS_KEY = "standalone-local-random-tools-settings-v1";
+    const DICE_STORAGE_KEY = "standalone-local-dice-roller-v1";
+    const DISCOUNT_STORAGE_KEY = "standalone-local-discount-calculator-v1";
+    const PRICEPER_STORAGE_KEY = "standalone-local-price-per-v1";
+    const DEFAULT_ITEMS = ["Pizza","Burgers","Tacos","Sushi","BBQ","Chinese","Italian","Breakfast"];
+    const PALETTE = ["#f97316","#22c55e","#3b82f6","#eab308","#ec4899","#14b8a6","#8b5cf6","#ef4444","#06b6d4","#84cc16","#f59e0b","#6366f1"];
+
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const wheelSelect = document.getElementById("wheelSelect");
+    const titleInput = document.getElementById("titleInput");
+    const itemsInput = document.getElementById("itemsInput");
+    const newItemInput = document.getElementById("newItemInput");
+    const spinBtn = document.getElementById("spinBtn");
+    const addBtn = document.getElementById("addBtn");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const sortBtn = document.getElementById("sortBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const exportCurrentBtn = document.getElementById("exportCurrentBtn");
+    const exportAllBtn = document.getElementById("exportAllBtn");
+    const importBtn = document.getElementById("importBtn");
+    const importFile = document.getElementById("importFile");
+    const newWheelBtn = document.getElementById("newWheelBtn");
+    const duplicateWheelBtn = document.getElementById("duplicateWheelBtn");
+    const renameWheelBtn = document.getElementById("renameWheelBtn");
+    const deleteWheelBtn = document.getElementById("deleteWheelBtn");
+    const avoidRepeatInput = document.getElementById("avoidRepeatInput");
+    const removeWinnerInput = document.getElementById("removeWinnerInput");
+    const countText = document.getElementById("countText");
+    const winnerBox = document.getElementById("winnerBox");
+    const winnerName = document.getElementById("winnerName");
+    const historyList = document.getElementById("historyList");
+    const navButtons = document.querySelectorAll(".nav button");
+    const toolPages = document.querySelectorAll(".tool-page");
+    const wheelExportActions = document.querySelector(".wheel-export-actions");
+
+    const diceNotationInput = document.getElementById("diceNotationInput");
+    const diceCountInput = document.getElementById("diceCountInput");
+    const diceSidesInput = document.getElementById("diceSidesInput");
+    const diceModifierInput = document.getElementById("diceModifierInput");
+    const diceModeInput = document.getElementById("diceModeInput");
+    const rollDiceBtn = document.getElementById("rollDiceBtn");
+    const diceExpression = document.getElementById("diceExpression");
+    const diceTotal = document.getElementById("diceTotal");
+    const diceBreakdown = document.getElementById("diceBreakdown");
+    const diceHistoryList = document.getElementById("diceHistoryList");
+    const clearDiceHistoryBtn = document.getElementById("clearDiceHistoryBtn");
+
+    const discountPriceInput = document.getElementById("discountPriceInput");
+    const discountQuantityInput = document.getElementById("discountQuantityInput");
+    const discountPercentInput = document.getElementById("discountPercentInput");
+    const discountDollarInput = document.getElementById("discountDollarInput");
+    const discountExtraPercentInput = document.getElementById("discountExtraPercentInput");
+    const discountTaxInput = document.getElementById("discountTaxInput");
+    const discountModeInput = document.getElementById("discountModeInput");
+    const calculateDiscountBtn = document.getElementById("calculateDiscountBtn");
+    const resetDiscountBtn = document.getElementById("resetDiscountBtn");
+    const clearDiscountHistoryBtn = document.getElementById("clearDiscountHistoryBtn");
+    const discountFinalTotal = document.getElementById("discountFinalTotal");
+    const discountOriginalSubtotal = document.getElementById("discountOriginalSubtotal");
+    const discountSavings = document.getElementById("discountSavings");
+    const discountSubtotal = document.getElementById("discountSubtotal");
+    const discountTaxAmount = document.getElementById("discountTaxAmount");
+    const discountEach = document.getElementById("discountEach");
+    const discountEffectivePercent = document.getElementById("discountEffectivePercent");
+    const discountHistoryList = document.getElementById("discountHistoryList");
+
+    const pricePerNameInput = document.getElementById("pricePerNameInput");
+    const pricePerPriceInput = document.getElementById("pricePerPriceInput");
+    const pricePerQuantityInput = document.getElementById("pricePerQuantityInput");
+    const pricePerUnitInput = document.getElementById("pricePerUnitInput");
+    const pricePerCompareUnitInput = document.getElementById("pricePerCompareUnitInput");
+    const addPricePerBtn = document.getElementById("addPricePerBtn");
+    const calculatePricePerBtn = document.getElementById("calculatePricePerBtn");
+    const newPricePerItemBtn = document.getElementById("newPricePerItemBtn");
+    const clearPricePerBtn = document.getElementById("clearPricePerBtn");
+    const pricePerCurrent = document.getElementById("pricePerCurrent");
+    const pricePerCurrentName = document.getElementById("pricePerCurrentName");
+    const pricePerCurrentPrice = document.getElementById("pricePerCurrentPrice");
+    const pricePerCurrentSize = document.getElementById("pricePerCurrentSize");
+    const pricePerBest = document.getElementById("pricePerBest");
+    const pricePerTableBody = document.getElementById("pricePerTableBody");
+
+    let state = {
+      currentId: "",
+      wheels: []
+    };
+
+    let diceState = {
+      history: [],
+      notation: "1d20",
+      count: 1,
+      sides: 20,
+      modifier: 0,
+      mode: "normal"
+    };
+
+    let discountState = {
+      history: [],
+      price: 100,
+      quantity: 1,
+      percent: 20,
+      dollar: 0,
+      extraPercent: 0,
+      tax: 0,
+      mode: "percentThenDollar"
+    };
+
+    let pricePerState = {
+      items: [],
+      name: "Item A",
+      price: 9.99,
+      quantity: 16,
+      unit: "oz",
+      compareUnit: "same"
+    };
+
+    let rotation = 0;
+    let startRotation = 0;
+    let targetRotation = 0;
+    let spinStart = 0;
+    const spinDuration = 4600;
+    let isSpinning = false;
+    let winnerIndex = -1;
+    let pendingWinnerIndex = -1;
+
+    function id() {
+      return "wheel-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    }
+
+    function makeWheel(name = "New Wheel", items = DEFAULT_ITEMS) {
+      return {
+        id: id(),
+        name,
+        title: name === "New Wheel" ? "What should we pick?" : name,
+        itemsText: items.join("\n"),
+        history: [],
+        avoidRepeat: true,
+        removeWinner: false
+      };
+    }
+
+    function currentWheel() {
+      let wheel = state.wheels.find(w => w.id === state.currentId);
+      if (!wheel && state.wheels.length) {
+        state.currentId = state.wheels[0].id;
+        wheel = state.wheels[0];
+      }
+      return wheel;
+    }
+
+    function normalizeItems(text = itemsInput.value) {
+      return text.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function safeName(name) {
+      return (name || "picker-wheel").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "picker-wheel";
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function saveCurrentFromInputs() {
+      const wheel = currentWheel();
+      if (!wheel) return;
+      wheel.title = titleInput.value;
+      wheel.itemsText = itemsInput.value;
+      wheel.avoidRepeat = avoidRepeatInput.checked;
+      wheel.removeWinner = removeWinnerInput.checked;
+      save();
+      renderWheelSelect();
+    }
+
+    function migrateOldSingleWheel() {
+      try {
+        const old = JSON.parse(localStorage.getItem(OLD_STORAGE_KEY) || "null");
+        if (!old) return null;
+        const migrated = makeWheel(old.title || "Imported Wheel", normalizeItems(old.itemsText || DEFAULT_ITEMS.join("\n")));
+        migrated.name = old.title || "Imported Wheel";
+        migrated.title = old.title || "What should we pick?";
+        migrated.itemsText = old.itemsText || DEFAULT_ITEMS.join("\n");
+        migrated.history = Array.isArray(old.history) ? old.history : [];
+        migrated.avoidRepeat = old.avoidRepeat !== false;
+        migrated.removeWinner = Boolean(old.removeWinner);
+        return { currentId: migrated.id, wheels: [migrated] };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function load() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (saved && Array.isArray(saved.wheels) && saved.wheels.length) {
+          state = saved;
+          return;
+        }
+      } catch (_) {}
+
+      const migrated = migrateOldSingleWheel();
+      if (migrated) {
+        state = migrated;
+        save();
+        return;
+      }
+
+      const first = makeWheel("Dinner Ideas", DEFAULT_ITEMS);
+      state = { currentId: first.id, wheels: [first] };
+      save();
+    }
+
+    function loadCurrentIntoInputs() {
+      const wheel = currentWheel();
+      if (!wheel) return;
+      titleInput.value = wheel.title || wheel.name || "What should we pick?";
+      itemsInput.value = wheel.itemsText || "";
+      avoidRepeatInput.checked = wheel.avoidRepeat !== false;
+      removeWinnerInput.checked = Boolean(wheel.removeWinner);
+      winnerIndex = -1;
+      winnerBox.style.display = "none";
+      renderWheelSelect();
+      renderHistory();
+      drawWheel();
+    }
+
+    function renderWheelSelect() {
+      const selectedId = state.currentId;
+      wheelSelect.innerHTML = "";
+      state.wheels.forEach(wheel => {
+        const option = document.createElement("option");
+        option.value = wheel.id;
+        option.textContent = wheel.name || wheel.title || "Untitled Wheel";
+        option.selected = wheel.id === selectedId;
+        wheelSelect.appendChild(option);
+      });
+      deleteWheelBtn.disabled = state.wheels.length <= 1;
+    }
+
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function drawWheel() {
+      const items = normalizeItems();
+      const size = canvas.width;
+      const cx = size / 2;
+      const cy = size / 2;
+      const radius = size * 0.44;
+      const segment = items.length ? (Math.PI * 2) / items.length : Math.PI * 2;
+
+      ctx.clearRect(0, 0, size, size);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotation * Math.PI / 180);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, radius + 12, 0, Math.PI * 2);
+      ctx.fillStyle = "#0f172a";
+      ctx.fill();
+
+      if (!items.length) {
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#e2e8f0";
+        ctx.fill();
+      } else {
+        items.forEach((item, index) => {
+          const start = index * segment;
+          const end = start + segment;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, radius, start, end);
+          ctx.closePath();
+          ctx.fillStyle = PALETTE[index % PALETTE.length];
+          ctx.fill();
+          ctx.lineWidth = index === winnerIndex ? 8 : 3;
+          ctx.strokeStyle = "#ffffff";
+          ctx.stroke();
+
+          ctx.save();
+          ctx.rotate(start + segment / 2);
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `900 ${items.length > 20 ? 22 : items.length > 12 ? 28 : 34}px Arial`;
+          ctx.shadowColor = "rgba(0,0,0,.45)";
+          ctx.shadowBlur = 6;
+          const label = item.length > 24 ? item.slice(0, 23) + "…" : item;
+          ctx.fillText(label, radius * 0.58, 0);
+          ctx.restore();
+        });
+      }
+
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 90, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "#0f172a";
+      ctx.stroke();
+
+      ctx.fillStyle = "#0f172a";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "900 34px Arial";
+      ctx.fillText("SPIN", cx, cy - 8);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "800 15px Arial";
+      ctx.fillText("LOCAL ONLY", cx, cy + 30);
+
+      updateCount();
+    }
+
+    function updateCount() {
+      const count = normalizeItems().length;
+      countText.textContent = `${count} option${count === 1 ? "" : "s"} on the wheel.`;
+      spinBtn.disabled = count < 2 || isSpinning;
+      shuffleBtn.disabled = count < 2;
+      sortBtn.disabled = count < 2;
+    }
+
+    function renderHistory() {
+      const wheel = currentWheel();
+      const history = wheel?.history || [];
+      historyList.innerHTML = "";
+      if (!history.length) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "No spins yet.";
+        historyList.appendChild(p);
+        return;
+      }
+      history.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        const strong = document.createElement("strong");
+        strong.textContent = entry.item;
+        const span = document.createElement("span");
+        span.textContent = entry.at;
+        div.appendChild(strong);
+        div.appendChild(span);
+        historyList.appendChild(div);
+      });
+    }
+
+    function pickWinnerIndex(items) {
+      if (!items.length) return -1;
+      if (!avoidRepeatInput.checked || items.length === 1) return Math.floor(Math.random() * items.length);
+      let next = Math.floor(Math.random() * items.length);
+      let safety = 0;
+      while (next === winnerIndex && safety < 30) {
+        next = Math.floor(Math.random() * items.length);
+        safety++;
+      }
+      return next;
+    }
+
+    function spin() {
+      const items = normalizeItems();
+      if (isSpinning || items.length < 2) return;
+
+      pendingWinnerIndex = pickWinnerIndex(items);
+      const segmentDeg = 360 / items.length;
+      const targetCenter = pendingWinnerIndex * segmentDeg + segmentDeg / 2;
+      const pointerAngle = 0;
+      const currentNormalized = ((rotation % 360) + 360) % 360;
+      const needed = pointerAngle - targetCenter - currentNormalized;
+      const fullSpins = 360 * (6 + Math.floor(Math.random() * 4));
+      const jitter = (Math.random() - .5) * Math.min(segmentDeg * .35, 10);
+
+      startRotation = rotation;
+      targetRotation = rotation + fullSpins + needed + jitter;
+      spinStart = performance.now();
+      isSpinning = true;
+      winnerIndex = -1;
+      winnerBox.style.display = "none";
+      updateCount();
+      requestAnimationFrame(animateSpin);
+    }
+
+    function animateSpin(now) {
+      const elapsed = now - spinStart;
+      const t = Math.min(elapsed / spinDuration, 1);
+      rotation = startRotation + (targetRotation - startRotation) * easeOutCubic(t);
+      drawWheel();
+      if (t < 1) requestAnimationFrame(animateSpin);
+      else finishSpin();
+    }
+
+    function finishSpin() {
+      const wheel = currentWheel();
+      const items = normalizeItems();
+      const picked = items[pendingWinnerIndex];
+      winnerIndex = pendingWinnerIndex;
+      isSpinning = false;
+
+      if (picked && wheel) {
+        winnerName.textContent = picked;
+        winnerBox.style.display = "block";
+        wheel.history = [{ item: picked, at: new Date().toLocaleString() }, ...(wheel.history || [])].slice(0, 30);
+        renderHistory();
+
+        if (removeWinnerInput.checked) {
+          setTimeout(() => {
+            const updated = normalizeItems().filter((_, index) => index !== pendingWinnerIndex);
+            itemsInput.value = updated.join("\n");
+            winnerIndex = -1;
+            saveCurrentFromInputs();
+            drawWheel();
+          }, 900);
+        }
+      }
+
+      saveCurrentFromInputs();
+      drawWheel();
+      updateCount();
+    }
+
+    function addItem() {
+      const value = newItemInput.value.trim();
+      if (!value) return;
+      const current = itemsInput.value.trim();
+      itemsInput.value = current ? `${current}\n${value}` : value;
+      newItemInput.value = "";
+      winnerIndex = -1;
+      saveCurrentFromInputs();
+      drawWheel();
+    }
+
+    function shuffleItems() {
+      const items = normalizeItems().sort(() => Math.random() - .5);
+      itemsInput.value = items.join("\n");
+      winnerIndex = -1;
+      winnerBox.style.display = "none";
+      saveCurrentFromInputs();
+      drawWheel();
+    }
+
+    function sortItems() {
+      itemsInput.value = normalizeItems().sort((a, b) => a.localeCompare(b)).join("\n");
+      winnerIndex = -1;
+      saveCurrentFromInputs();
+      drawWheel();
+    }
+
+    function resetEntries() {
+      itemsInput.value = DEFAULT_ITEMS.join("\n");
+      winnerIndex = -1;
+      winnerBox.style.display = "none";
+      saveCurrentFromInputs();
+      drawWheel();
+    }
+
+    function clearEntries() {
+      itemsInput.value = "";
+      winnerIndex = -1;
+      winnerBox.style.display = "none";
+      saveCurrentFromInputs();
+      drawWheel();
+    }
+
+    function clearHistory() {
+      const wheel = currentWheel();
+      if (!wheel) return;
+      wheel.history = [];
+      save();
+      renderHistory();
+    }
+
+    function newWheel() {
+      const name = prompt("Name for the new wheel:", "New Wheel");
+      if (name === null) return;
+      const clean = name.trim() || "New Wheel";
+      const wheel = makeWheel(clean, []);
+      wheel.title = clean;
+      state.wheels.push(wheel);
+      state.currentId = wheel.id;
+      save();
+      loadCurrentIntoInputs();
+    }
+
+    function duplicateWheel() {
+      const wheel = currentWheel();
+      if (!wheel) return;
+      const name = prompt("Name for the duplicate wheel:", `${wheel.name || wheel.title || "Wheel"} Copy`);
+      if (name === null) return;
+      const copy = JSON.parse(JSON.stringify(wheel));
+      copy.id = id();
+      copy.name = name.trim() || `${wheel.name || "Wheel"} Copy`;
+      copy.title = copy.name;
+      state.wheels.push(copy);
+      state.currentId = copy.id;
+      save();
+      loadCurrentIntoInputs();
+    }
+
+    function renameWheel() {
+      const wheel = currentWheel();
+      if (!wheel) return;
+      const name = prompt("Rename this wheel:", wheel.name || wheel.title || "Untitled Wheel");
+      if (name === null) return;
+      const clean = name.trim();
+      if (!clean) return;
+      wheel.name = clean;
+      wheel.title = clean;
+      titleInput.value = clean;
+      saveCurrentFromInputs();
+      renderWheelSelect();
+    }
+
+    function deleteWheel() {
+      const wheel = currentWheel();
+      if (!wheel || state.wheels.length <= 1) return;
+      const ok = confirm(`Delete "${wheel.name || wheel.title || "this wheel"}"? This cannot be undone unless you exported it.`);
+      if (!ok) return;
+      const index = state.wheels.findIndex(w => w.id === wheel.id);
+      state.wheels = state.wheels.filter(w => w.id !== wheel.id);
+      state.currentId = state.wheels[Math.max(0, index - 1)]?.id || state.wheels[0]?.id;
+      save();
+      loadCurrentIntoInputs();
+    }
+
+    function exportCurrent() {
+      saveCurrentFromInputs();
+      const wheel = currentWheel();
+      if (!wheel) return;
+      const payload = {
+        app: "local-random-tools",
+        type: "single-wheel",
+        wheel
+      };
+      downloadJson(payload, `${safeName(wheel.name || wheel.title)}.json`);
+    }
+
+    function exportAll() {
+      saveCurrentFromInputs();
+      const payload = {
+        app: "local-random-tools",
+        type: "all-wheels",
+        currentId: state.currentId,
+        wheels: state.wheels
+      };
+      downloadJson(payload, "all-picker-wheels.json");
+    }
+
+    function downloadJson(payload, filename) {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+
+          if (parsed.type === "all-wheels" && Array.isArray(parsed.wheels)) {
+            const imported = parsed.wheels.map(w => ({ ...w, id: id() }));
+            state.wheels.push(...imported);
+            state.currentId = imported[0]?.id || state.currentId;
+          } else if (parsed.type === "single-wheel" && parsed.wheel) {
+            const imported = { ...parsed.wheel, id: id() };
+            imported.name = imported.name || imported.title || "Imported Wheel";
+            state.wheels.push(imported);
+            state.currentId = imported.id;
+          } else if (Array.isArray(parsed.items)) {
+            const imported = makeWheel(parsed.title || "Imported Wheel", parsed.items);
+            imported.history = Array.isArray(parsed.history) ? parsed.history.slice(0, 30) : [];
+            state.wheels.push(imported);
+            state.currentId = imported.id;
+          } else {
+            throw new Error("Unsupported import format.");
+          }
+
+          save();
+          loadCurrentIntoInputs();
+        } catch (_) {
+          alert("That file could not be imported. Use an export from this app.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function setPage(pageId) {
+      navButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.page === pageId));
+      toolPages.forEach(page => page.classList.toggle("active", page.id === pageId));
+      wheelExportActions.style.display = pageId === "wheelPage" ? "flex" : "none";
+      localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify({ pageId }));
+      if (pageId === "wheelPage") drawWheel();
+    }
+
+    function loadAppSettings() {
+      try {
+        const settings = JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || "null");
+        if (settings?.pageId && document.getElementById(settings.pageId)) {
+          setPage(settings.pageId);
+          return;
+        }
+      } catch (_) {}
+      setPage("wheelPage");
+    }
+
+    // Dice roller
+    function saveDiceState() {
+      diceState.notation = diceNotationInput.value;
+      diceState.count = Number(diceCountInput.value) || 1;
+      diceState.sides = Number(diceSidesInput.value) || 20;
+      diceState.modifier = Number(diceModifierInput.value) || 0;
+      diceState.mode = diceModeInput.value;
+      localStorage.setItem(DICE_STORAGE_KEY, JSON.stringify(diceState));
+    }
+
+    function loadDiceState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(DICE_STORAGE_KEY) || "null");
+        if (saved) diceState = { ...diceState, ...saved, history: Array.isArray(saved.history) ? saved.history : [] };
+      } catch (_) {}
+      diceNotationInput.value = diceState.notation || "1d20";
+      diceCountInput.value = diceState.count || 1;
+      diceSidesInput.value = diceState.sides || 20;
+      diceModifierInput.value = diceState.modifier || 0;
+      diceModeInput.value = diceState.mode || "normal";
+      renderDiceHistory();
+    }
+
+    function clampNumber(value, min, max) {
+      const n = Math.floor(Number(value));
+      if (!Number.isFinite(n)) return min;
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function parseNotation(input) {
+      const text = String(input || "").trim().toLowerCase().replace(/\s+/g, "");
+      const match = text.match(/^(\d*)d(\d+)(kh(\d+))?([+-]\d+)?$/);
+      if (!match) return null;
+      const count = clampNumber(match[1] || 1, 1, 100);
+      const sides = clampNumber(match[2], 2, 1000);
+      const keepHighest = match[4] ? clampNumber(match[4], 1, count) : null;
+      const modifier = match[5] ? clampNumber(match[5], -10000, 10000) : 0;
+      return { count, sides, keepHighest, modifier, expression: `${count}d${sides}${keepHighest ? "kh" + keepHighest : ""}${modifier ? (modifier > 0 ? "+" + modifier : modifier) : ""}` };
+    }
+
+    function rollOne(sides) {
+      return Math.floor(Math.random() * sides) + 1;
+    }
+
+    function rollDiceFromSettings() {
+      let config;
+      const mode = diceModeInput.value;
+
+      if (mode === "advantage") {
+        config = { count: 2, sides: 20, keepHighest: 1, modifier: Number(diceModifierInput.value) || 0, expression: `2d20kh1${Number(diceModifierInput.value) ? (Number(diceModifierInput.value) > 0 ? "+" + Number(diceModifierInput.value) : Number(diceModifierInput.value)) : ""}` };
+      } else if (mode === "disadvantage") {
+        config = { count: 2, sides: 20, keepLowest: 1, modifier: Number(diceModifierInput.value) || 0, expression: `2d20kl1${Number(diceModifierInput.value) ? (Number(diceModifierInput.value) > 0 ? "+" + Number(diceModifierInput.value) : Number(diceModifierInput.value)) : ""}` };
+      } else if (mode === "kh3") {
+        config = { count: 4, sides: 6, keepHighest: 3, modifier: Number(diceModifierInput.value) || 0, expression: `4d6kh3${Number(diceModifierInput.value) ? (Number(diceModifierInput.value) > 0 ? "+" + Number(diceModifierInput.value) : Number(diceModifierInput.value)) : ""}` };
+      } else {
+        config = parseNotation(diceNotationInput.value);
+        if (!config) {
+          config = {
+            count: clampNumber(diceCountInput.value, 1, 100),
+            sides: clampNumber(diceSidesInput.value, 2, 1000),
+            keepHighest: null,
+            modifier: clampNumber(diceModifierInput.value, -10000, 10000),
+            expression: ""
+          };
+          config.expression = `${config.count}d${config.sides}${config.modifier ? (config.modifier > 0 ? "+" + config.modifier : config.modifier) : ""}`;
+        }
+      }
+
+      const rolls = Array.from({ length: config.count }, () => rollOne(config.sides));
+      let keptFlags = rolls.map(() => true);
+
+      if (config.keepHighest) {
+        const indexed = rolls.map((value, index) => ({ value, index })).sort((a, b) => b.value - a.value);
+        const keep = new Set(indexed.slice(0, config.keepHighest).map(item => item.index));
+        keptFlags = rolls.map((_, index) => keep.has(index));
+      }
+
+      if (config.keepLowest) {
+        const indexed = rolls.map((value, index) => ({ value, index })).sort((a, b) => a.value - b.value);
+        const keep = new Set(indexed.slice(0, config.keepLowest).map(item => item.index));
+        keptFlags = rolls.map((_, index) => keep.has(index));
+      }
+
+      const keptTotal = rolls.reduce((sum, roll, index) => sum + (keptFlags[index] ? roll : 0), 0);
+      const total = keptTotal + config.modifier;
+
+      const result = {
+        expression: config.expression,
+        total,
+        rolls,
+        keptFlags,
+        modifier: config.modifier,
+        at: new Date().toLocaleString()
+      };
+
+      diceExpression.textContent = result.expression;
+      diceTotal.textContent = String(result.total);
+      renderDiceBreakdown(result);
+
+      diceState.history = [result, ...(diceState.history || [])].slice(0, 50);
+      saveDiceState();
+      renderDiceHistory();
+    }
+
+    function renderDiceBreakdown(result) {
+      diceBreakdown.innerHTML = "";
+      result.rolls.forEach((roll, index) => {
+        const span = document.createElement("span");
+        span.className = "die-pill" + (result.keptFlags[index] ? "" : " dropped");
+        span.textContent = roll;
+        diceBreakdown.appendChild(span);
+      });
+
+      if (result.modifier) {
+        const mod = document.createElement("span");
+        mod.className = "die-pill";
+        mod.textContent = result.modifier > 0 ? `+${result.modifier}` : String(result.modifier);
+        diceBreakdown.appendChild(mod);
+      }
+    }
+
+    function renderDiceHistory() {
+      const history = diceState.history || [];
+      diceHistoryList.innerHTML = "";
+      if (!history.length) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "No dice rolls yet.";
+        diceHistoryList.appendChild(p);
+        return;
+      }
+      history.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        const strong = document.createElement("strong");
+        strong.textContent = `${entry.expression}: ${entry.total}`;
+        const span = document.createElement("span");
+        const rolls = Array.isArray(entry.rolls) ? entry.rolls.join(", ") : "";
+        span.textContent = `${entry.at} — Rolls: ${rolls}${entry.modifier ? `, Modifier: ${entry.modifier}` : ""}`;
+        div.appendChild(strong);
+        div.appendChild(span);
+        diceHistoryList.appendChild(div);
+      });
+    }
+
+    function clearDiceHistory() {
+      diceState.history = [];
+      saveDiceState();
+      renderDiceHistory();
+    }
+
+    function syncNotationFromInputs() {
+      if (diceModeInput.value !== "normal") return;
+      const count = clampNumber(diceCountInput.value, 1, 100);
+      const sides = clampNumber(diceSidesInput.value, 2, 1000);
+      const mod = clampNumber(diceModifierInput.value, -10000, 10000);
+      diceNotationInput.value = `${count}d${sides}${mod ? (mod > 0 ? "+" + mod : mod) : ""}`;
+      saveDiceState();
+    }
+
+    function syncInputsFromNotation() {
+      const parsed = parseNotation(diceNotationInput.value);
+      if (!parsed) {
+        saveDiceState();
+        return;
+      }
+      diceCountInput.value = parsed.count;
+      diceSidesInput.value = parsed.sides;
+      diceModifierInput.value = parsed.modifier;
+      saveDiceState();
+    }
+
+
+    // Discount calculator
+    function money(value) {
+      const n = Number.isFinite(Number(value)) ? Number(value) : 0;
+      return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+    }
+
+    function percentText(value) {
+      const n = Number.isFinite(Number(value)) ? Number(value) : 0;
+      return `${n.toFixed(2)}%`;
+    }
+
+    function readDiscountInputs() {
+      return {
+        price: Math.max(0, Number(discountPriceInput.value) || 0),
+        quantity: Math.max(1, Math.floor(Number(discountQuantityInput.value) || 1)),
+        percent: Math.min(100, Math.max(0, Number(discountPercentInput.value) || 0)),
+        dollar: Math.max(0, Number(discountDollarInput.value) || 0),
+        extraPercent: Math.min(100, Math.max(0, Number(discountExtraPercentInput.value) || 0)),
+        tax: Math.max(0, Number(discountTaxInput.value) || 0),
+        mode: discountModeInput.value
+      };
+    }
+
+    function calculateDiscount(addToHistory = false) {
+      const input = readDiscountInputs();
+      const originalSubtotal = input.price * input.quantity;
+      let discountedSubtotal = originalSubtotal;
+
+      if (input.mode === "percentThenDollar") {
+        discountedSubtotal = discountedSubtotal * (1 - input.percent / 100);
+        discountedSubtotal = discountedSubtotal - (input.dollar * input.quantity);
+      } else if (input.mode === "dollarThenPercent") {
+        discountedSubtotal = discountedSubtotal - (input.dollar * input.quantity);
+        discountedSubtotal = discountedSubtotal * (1 - input.percent / 100);
+      } else if (input.mode === "percentOnly") {
+        discountedSubtotal = discountedSubtotal * (1 - input.percent / 100);
+      } else if (input.mode === "dollarOnly") {
+        discountedSubtotal = discountedSubtotal - (input.dollar * input.quantity);
+      }
+
+      discountedSubtotal = Math.max(0, discountedSubtotal);
+      discountedSubtotal = discountedSubtotal * (1 - input.extraPercent / 100);
+      discountedSubtotal = Math.max(0, discountedSubtotal);
+
+      const savings = Math.max(0, originalSubtotal - discountedSubtotal);
+      const taxAmount = discountedSubtotal * (input.tax / 100);
+      const finalTotal = discountedSubtotal + taxAmount;
+      const each = input.quantity > 0 ? finalTotal / input.quantity : finalTotal;
+      const effectivePercent = originalSubtotal > 0 ? (savings / originalSubtotal) * 100 : 0;
+
+      const result = {
+        ...input,
+        originalSubtotal,
+        discountedSubtotal,
+        savings,
+        taxAmount,
+        finalTotal,
+        each,
+        effectivePercent,
+        at: new Date().toLocaleString()
+      };
+
+      discountFinalTotal.textContent = money(finalTotal);
+      discountOriginalSubtotal.textContent = money(originalSubtotal);
+      discountSavings.textContent = money(savings);
+      discountSubtotal.textContent = money(discountedSubtotal);
+      discountTaxAmount.textContent = money(taxAmount);
+      discountEach.textContent = money(each);
+      discountEffectivePercent.textContent = percentText(effectivePercent);
+
+      discountState = { ...discountState, ...input };
+      if (addToHistory) {
+        discountState.history = [result, ...(discountState.history || [])].slice(0, 50);
+      }
+      saveDiscountState();
+      renderDiscountHistory();
+      return result;
+    }
+
+    function saveDiscountState() {
+      localStorage.setItem(DISCOUNT_STORAGE_KEY, JSON.stringify(discountState));
+    }
+
+    function loadDiscountState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(DISCOUNT_STORAGE_KEY) || "null");
+        if (saved) discountState = { ...discountState, ...saved, history: Array.isArray(saved.history) ? saved.history : [] };
+      } catch (_) {}
+
+      discountPriceInput.value = discountState.price ?? 100;
+      discountQuantityInput.value = discountState.quantity ?? 1;
+      discountPercentInput.value = discountState.percent ?? 20;
+      discountDollarInput.value = discountState.dollar ?? 0;
+      discountExtraPercentInput.value = discountState.extraPercent ?? 0;
+      discountTaxInput.value = discountState.tax ?? 0;
+      discountModeInput.value = discountState.mode || "percentThenDollar";
+
+      calculateDiscount(false);
+      renderDiscountHistory();
+    }
+
+    function renderDiscountHistory() {
+      const history = discountState.history || [];
+      discountHistoryList.innerHTML = "";
+      if (!history.length) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "No discount calculations yet.";
+        discountHistoryList.appendChild(p);
+        return;
+      }
+
+      history.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        const strong = document.createElement("strong");
+        strong.textContent = `${money(entry.originalSubtotal)} → ${money(entry.finalTotal)} (${percentText(entry.effectivePercent)} off)`;
+        const span = document.createElement("span");
+        span.textContent = `${entry.at} — Qty ${entry.quantity}, ${entry.percent}% off, ${money(entry.dollar)} off each, extra ${entry.extraPercent}%, tax ${entry.tax}%`;
+        div.appendChild(strong);
+        div.appendChild(span);
+        discountHistoryList.appendChild(div);
+      });
+    }
+
+    function clearDiscountHistory() {
+      discountState.history = [];
+      saveDiscountState();
+      renderDiscountHistory();
+    }
+
+    function resetDiscount() {
+      discountPriceInput.value = 100;
+      discountQuantityInput.value = 1;
+      discountPercentInput.value = 20;
+      discountDollarInput.value = 0;
+      discountExtraPercentInput.value = 0;
+      discountTaxInput.value = 0;
+      discountModeInput.value = "percentThenDollar";
+      calculateDiscount(false);
+    }
+
+
+
+    // Price per calculator
+    const UNIT_FACTORS = {
+      "oz": { type: "weight", base: "oz", factor: 1 },
+      "lb": { type: "weight", base: "oz", factor: 16 },
+      "g": { type: "weight", base: "oz", factor: 0.03527396195 },
+      "kg": { type: "weight", base: "oz", factor: 35.27396195 },
+      "fl oz": { type: "volume", base: "fl oz", factor: 1 },
+      "ml": { type: "volume", base: "fl oz", factor: 0.0338140227 },
+      "L": { type: "volume", base: "fl oz", factor: 33.8140227 },
+      "gal": { type: "volume", base: "fl oz", factor: 128 },
+      "item": { type: "count", base: "item", factor: 1 },
+      "ct": { type: "count", base: "item", factor: 1 },
+      "serving": { type: "serving", base: "serving", factor: 1 },
+      "sq ft": { type: "area", base: "sq ft", factor: 1 },
+      "ft": { type: "length", base: "ft", factor: 1 }
+    };
+
+    function readPricePerInputs() {
+      return {
+        name: pricePerNameInput.value.trim() || "Unnamed item",
+        price: Math.max(0, Number(pricePerPriceInput.value) || 0),
+        quantity: Math.max(0, Number(pricePerQuantityInput.value) || 0),
+        unit: pricePerUnitInput.value,
+        compareUnit: pricePerCompareUnitInput.value
+      };
+    }
+
+    function getDisplayCompareUnit(item) {
+      if (item.compareUnit === "same") return item.unit;
+      const from = UNIT_FACTORS[item.unit];
+      const to = UNIT_FACTORS[item.compareUnit];
+      if (!from || !to || from.type !== to.type) return item.unit;
+      return item.compareUnit;
+    }
+
+    function convertedQuantity(quantity, fromUnit, toUnit) {
+      if (toUnit === "same" || fromUnit === toUnit) return quantity;
+      const from = UNIT_FACTORS[fromUnit];
+      const to = UNIT_FACTORS[toUnit];
+      if (!from || !to || from.type !== to.type) return quantity;
+      const baseQuantity = quantity * from.factor;
+      return baseQuantity / to.factor;
+    }
+
+    function calculatePricePerItem(raw) {
+      const compareUnit = getDisplayCompareUnit(raw);
+      const normalizedQuantity = convertedQuantity(raw.quantity, raw.unit, compareUnit);
+      const pricePer = normalizedQuantity > 0 ? raw.price / normalizedQuantity : 0;
+      return { ...raw, compareUnit, normalizedQuantity, pricePer };
+    }
+
+    function formatUnitPrice(value, unit) {
+      if (!Number.isFinite(value)) return `—/${unit}`;
+      const decimals = value >= 10 ? 2 : value >= 1 ? 3 : 4;
+      return `${money(value).replace(/(\.\d{2})$/, match => match)}/${unit}`;
+    }
+
+    function updatePricePerCurrent() {
+      const raw = readPricePerInputs();
+      const item = calculatePricePerItem(raw);
+      pricePerCurrent.textContent = `${money(item.pricePer)}/${item.compareUnit}`;
+      pricePerCurrentName.textContent = item.name;
+      pricePerCurrentPrice.textContent = money(item.price);
+      pricePerCurrentSize.textContent = `${item.quantity} ${item.unit}`;
+
+      pricePerState = { ...pricePerState, ...raw };
+      savePricePerState();
+      renderPricePerTable();
+      return item;
+    }
+
+    function savePricePerState() {
+      localStorage.setItem(PRICEPER_STORAGE_KEY, JSON.stringify(pricePerState));
+    }
+
+    function loadPricePerState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(PRICEPER_STORAGE_KEY) || "null");
+        if (saved) pricePerState = { ...pricePerState, ...saved, items: Array.isArray(saved.items) ? saved.items : [] };
+      } catch (_) {}
+
+      pricePerNameInput.value = pricePerState.name || "Item A";
+      pricePerPriceInput.value = pricePerState.price ?? 9.99;
+      pricePerQuantityInput.value = pricePerState.quantity ?? 16;
+      pricePerUnitInput.value = pricePerState.unit || "oz";
+      pricePerCompareUnitInput.value = pricePerState.compareUnit || "same";
+      updatePricePerCurrent();
+      renderPricePerTable();
+    }
+
+    function addPricePerItem() {
+      const item = calculatePricePerItem(readPricePerInputs());
+      const existingIndex = pricePerState.items.findIndex(i => i.name.toLowerCase() === item.name.toLowerCase());
+      if (existingIndex >= 0) {
+        pricePerState.items[existingIndex] = item;
+      } else {
+        pricePerState.items.push(item);
+      }
+      pricePerState = { ...pricePerState, ...readPricePerInputs() };
+      savePricePerState();
+      renderPricePerTable();
+    }
+
+    function renderPricePerTable() {
+      const items = (pricePerState.items || []).map(calculatePricePerItem);
+      pricePerTableBody.innerHTML = "";
+      if (!items.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "No comparison items yet.";
+        td.style.borderRadius = "14px";
+        tr.appendChild(td);
+        pricePerTableBody.appendChild(tr);
+        pricePerBest.textContent = "—";
+        return;
+      }
+
+      const bestValue = Math.min(...items.map(i => i.pricePer));
+      const best = items.find(i => i.pricePer === bestValue);
+      pricePerBest.textContent = best ? `${best.name} at ${money(best.pricePer)}/${best.compareUnit}` : "—";
+
+      items
+        .sort((a, b) => a.pricePer - b.pricePer)
+        .forEach((item, index) => {
+          const tr = document.createElement("tr");
+          if (item.pricePer === bestValue) tr.className = "best";
+
+          const cells = [
+            item.name,
+            money(item.price),
+            `${item.quantity} ${item.unit}`,
+            `${money(item.pricePer)}/${item.compareUnit}`
+          ];
+
+          cells.forEach(text => {
+            const td = document.createElement("td");
+            td.textContent = text;
+            tr.appendChild(td);
+          });
+
+          const actionTd = document.createElement("td");
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "secondary";
+          removeBtn.textContent = "Remove";
+          removeBtn.style.padding = "8px 10px";
+          removeBtn.addEventListener("click", () => {
+            pricePerState.items = pricePerState.items.filter(i => i.name !== item.name);
+            savePricePerState();
+            renderPricePerTable();
+          });
+          actionTd.appendChild(removeBtn);
+          tr.appendChild(actionTd);
+
+          pricePerTableBody.appendChild(tr);
+        });
+    }
+
+    function newPricePerItem() {
+      pricePerNameInput.value = "";
+      pricePerPriceInput.value = "";
+      pricePerQuantityInput.value = "";
+      pricePerUnitInput.value = "oz";
+      pricePerCompareUnitInput.value = "same";
+      updatePricePerCurrent();
+      pricePerNameInput.focus();
+    }
+
+    function clearPricePerItems() {
+      pricePerState.items = [];
+      savePricePerState();
+      renderPricePerTable();
+    }
+
+
+    wheelSelect.addEventListener("change", () => {
+      const nextWheelId = wheelSelect.value;
+      saveCurrentFromInputs();
+      state.currentId = nextWheelId;
+      save();
+      rotation = 0;
+      loadCurrentIntoInputs();
+    });
+
+    [titleInput, itemsInput, avoidRepeatInput, removeWinnerInput].forEach(el => {
+      el.addEventListener("input", () => { saveCurrentFromInputs(); drawWheel(); });
+      el.addEventListener("change", () => { saveCurrentFromInputs(); drawWheel(); });
+    });
+
+    navButtons.forEach(btn => btn.addEventListener("click", () => setPage(btn.dataset.page)));
+
+    newItemInput.addEventListener("keydown", e => { if (e.key === "Enter") addItem(); });
+    spinBtn.addEventListener("click", spin);
+    addBtn.addEventListener("click", addItem);
+    shuffleBtn.addEventListener("click", shuffleItems);
+    sortBtn.addEventListener("click", sortItems);
+    resetBtn.addEventListener("click", resetEntries);
+    clearBtn.addEventListener("click", clearEntries);
+    clearHistoryBtn.addEventListener("click", clearHistory);
+    newWheelBtn.addEventListener("click", newWheel);
+    duplicateWheelBtn.addEventListener("click", duplicateWheel);
+    renameWheelBtn.addEventListener("click", renameWheel);
+    deleteWheelBtn.addEventListener("click", deleteWheel);
+    exportCurrentBtn.addEventListener("click", exportCurrent);
+    exportAllBtn.addEventListener("click", exportAll);
+    importBtn.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", e => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importJson(file);
+      e.target.value = "";
+    });
+
+    rollDiceBtn.addEventListener("click", rollDiceFromSettings);
+    diceNotationInput.addEventListener("change", syncInputsFromNotation);
+    diceNotationInput.addEventListener("input", saveDiceState);
+    diceCountInput.addEventListener("change", syncNotationFromInputs);
+    diceSidesInput.addEventListener("change", syncNotationFromInputs);
+    diceModifierInput.addEventListener("change", syncNotationFromInputs);
+    diceModeInput.addEventListener("change", saveDiceState);
+    clearDiceHistoryBtn.addEventListener("click", clearDiceHistory);
+    document.querySelectorAll(".quickDie").forEach(btn => {
+      btn.addEventListener("click", () => {
+        diceModeInput.value = "normal";
+        diceNotationInput.value = btn.dataset.notation;
+        syncInputsFromNotation();
+        rollDiceFromSettings();
+      });
+    });
+
+    calculateDiscountBtn.addEventListener("click", () => calculateDiscount(true));
+    resetDiscountBtn.addEventListener("click", resetDiscount);
+    clearDiscountHistoryBtn.addEventListener("click", clearDiscountHistory);
+    [discountPriceInput, discountQuantityInput, discountPercentInput, discountDollarInput, discountExtraPercentInput, discountTaxInput, discountModeInput].forEach(el => {
+      el.addEventListener("input", () => calculateDiscount(false));
+      el.addEventListener("change", () => calculateDiscount(false));
+    });
+    document.querySelectorAll(".discountPreset").forEach(btn => {
+      btn.addEventListener("click", () => {
+        discountPercentInput.value = btn.dataset.percent;
+        calculateDiscount(true);
+      });
+    });
+
+    addPricePerBtn.addEventListener("click", addPricePerItem);
+    calculatePricePerBtn.addEventListener("click", updatePricePerCurrent);
+    newPricePerItemBtn.addEventListener("click", newPricePerItem);
+    clearPricePerBtn.addEventListener("click", clearPricePerItems);
+    [pricePerNameInput, pricePerPriceInput, pricePerQuantityInput, pricePerUnitInput, pricePerCompareUnitInput].forEach(el => {
+      el.addEventListener("input", updatePricePerCurrent);
+      el.addEventListener("change", updatePricePerCurrent);
+    });
+
+    load();
+    loadCurrentIntoInputs();
+    loadDiceState();
+    loadDiscountState();
+    loadPricePerState();
+    loadAppSettings();
+  </script>
+</body>
+</html>
